@@ -2,9 +2,9 @@
 
 Four extensions for the [Pi coding agent](https://pi.dev/), tested with Pi 1.6.0.
 
-## Install on another machine
+## Install
 
-With Pi installed and Git authenticated to access this private GitHub repository:
+With Pi and Git installed, run this from any directory. No GitHub login is needed:
 
 ```sh
 pi install git:github.com/hegyibalint/pi-extensions
@@ -28,7 +28,7 @@ If you already have loose copies of these extensions in `~/.pi/agent/extensions/
 | `statusbar` | Shows context usage, token counts, cost, Git branch, and provider quota when available. Toggle with `/statusbar`. |
 | `web-search` | Adds `web_search` and `codex_standalone_web` using Pi’s existing OpenAI credentials and an available OpenAI model with web search support. |
 
-Sign in to the relevant providers on each machine; this repo does not include Pi settings, credentials, or session data.
+Installing does not require provider credentials. For features that use OpenAI or Anthropic, use `/login` in Pi if you aren't already signed in. This repo does not include Pi settings, credentials, or session data.
 
 ## Development
 
