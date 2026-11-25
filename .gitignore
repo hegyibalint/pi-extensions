@@ -1,0 +1,9 @@
+node_modules/
+.DS_Store
+coverage/
+.env
+.env.*
+*.env
+auth.json
+mcp-auth.json
+.pi/
