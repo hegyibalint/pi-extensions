@@ -63,13 +63,14 @@ test('rejects incompatible, oversized, and unresponsive peers', async (t) => {
 });
 
 test('formats cursor and selection locations relative to Pi’s working directory when possible', () => {
-  assert.deepEqual(attachmentDetails(snapshot, '/repo'), { path: 'main.ts', location: '2:3' });
-  assert.deepEqual(attachmentDetails(snapshot, '/other'), { path: '/repo/main.ts', location: '2:3' });
+  assert.deepEqual(attachmentDetails(snapshot, '/repo'), { path: 'main.ts', location: '2' });
+  assert.deepEqual(attachmentDetails(snapshot, '/other'), { path: '/repo/main.ts', location: '2' });
   const selected = (end) => ({ ...snapshot, activeFile: { ...snapshot.activeFile,
     selection: { start: { line: 2, column: 3 }, end },
   } });
-  assert.deepEqual(attachmentDetails(selected({ line: 2, column: 8 }), '/repo'), { path: 'main.ts', location: '2:3–8' });
-  assert.deepEqual(attachmentDetails(selected({ line: 12, column: 5 }), '/repo'), { path: 'main.ts', location: '2:3–12:5' });
+  assert.deepEqual(attachmentDetails(selected({ line: 2, column: 8 }), '/repo'), { path: 'main.ts', location: '2' });
+  assert.deepEqual(attachmentDetails(selected({ line: 12, column: 5 }), '/repo'), { path: 'main.ts', location: '2-12' });
+  assert.deepEqual(attachmentDetails(selected({ line: 12, column: 1 }), '/repo'), { path: 'main.ts', location: '2-11' });
   assert.deepEqual(attachmentDetails({ ...snapshot, activeFile: null }, '/repo'), { tabs: 1 });
 });
 
@@ -102,22 +103,25 @@ test('attaches only to user prompts and preserves the existing /ide command', as
   const { message } = await run({ messageType: 'user' }, ctx);
   assert.equal(message.customType, 'IDE');
   assert.equal(message.display, true);
-  assert.equal(message.content.split('\n')[0], 'main.ts:2:3');
+  assert.equal(message.content.split('\n')[0], 'main.ts:2');
   assert.match(message.content, /\/repo\/main\.ts/);
-  assert.deepEqual(message.details, { path: 'main.ts', location: '2:3' });
+  assert.match(message.content, /"column": 3/);
+  assert.deepEqual(message.details, { path: 'main.ts', location: '2' });
   const colors = [];
   const theme = {
-    fg: (color, text) => { colors.push(color); return text; },
-    bg: (color, text) => { colors.push(color); return text; },
+    fg: (color, text) => { colors.push([color, text]); return text; },
+    bg: (color, text) => { colors.push([color, text]); return text; },
   };
   const render = renderers.get(message.customType);
   const card = (details, width = 80, expanded = false) =>
     render({ ...message, details }, { outputPad: 0, expanded }, theme).render(width).map((line) => line.trimEnd());
   const padded = (text) => ['', text, ''];
-  assert.deepEqual(card(message.details), padded('IDE · main.ts:2:3'));
-  assert.deepEqual(new Set(colors), new Set(['customMessageLabel', 'customMessageText', 'customMessageBg']));
-  assert.deepEqual(card({ path: 'some/very/long/folder/main.ts', location: '2:3–12:5' }, 24), padded('IDE · …/main.ts:2:3–12:5'));
-  assert.deepEqual(card({ path: 'a\n\x1b.ts', location: '2:3' }), padded('IDE · a\\u000a\\u001b.ts:2:3'));
+  assert.deepEqual(card(message.details), padded('IDE · main.ts:2'));
+  assert.deepEqual(new Set(colors.map(([color]) => color)), new Set(['customMessageLabel', 'customMessageText', 'warning', 'customMessageBg']));
+  assert.ok(colors.some(([color, text]) => color === 'warning' && text === ':2'));
+  assert.deepEqual(card({ path: 'some/very/long/folder/main.ts', location: '2-12' }, 24), padded('IDE · …/main.ts:2-12'));
+  assert.deepEqual(card({ path: 'a\n\x1b.ts', location: '2' }), padded('IDE · a\\u000a\\u001b.ts:2'));
+  assert.deepEqual(card({ path: 'main.ts', location: '2:3–12:1' }), padded('IDE · main.ts:2-11'));
   assert.deepEqual(card({ tabs: 3 }), padded('IDE · 3 open tabs'));
   assert.match(card(message.details, 80, true).join('\n'), /\/repo\/main\.ts/);
 

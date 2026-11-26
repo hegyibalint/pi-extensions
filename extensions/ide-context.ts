@@ -108,39 +108,50 @@ function escapeMarkerPath(path: string): string {
     (char) => `\\u${char.charCodeAt(0).toString(16).padStart(4, '0')}`);
 }
 
+function lineRange(start: number, end = start): string {
+  return end > start ? `${start}-${end}` : String(start);
+}
+
 export function attachmentDetails(snapshot: Snapshot, cwd: string) {
   const file = snapshot.activeFile;
   if (!file) return { tabs: snapshot.openTabs.length };
   const local = relative(cwd, file.path);
   const path = local && local !== '..' && !local.startsWith(`..${sep}`) && !isAbsolute(local) ? local : file.path;
-  const position = ({ line, column }: Position) => `${line}:${column}`;
   const selection = file.selection;
+  // A selection ending at column one does not include that line.
   const location = selection
-    ? `${position(selection.start)}–${selection.start.line === selection.end.line ? selection.end.column : position(selection.end)}`
-    : position(file.cursor);
+    ? lineRange(selection.start.line, selection.end.line - (selection.end.column === 1 ? 1 : 0))
+    : lineRange(file.cursor.line);
   return { path, location };
 }
 
-function attachmentLocation(data: unknown, width = Number.MAX_SAFE_INTEGER): string {
+function attachmentLocation(
+  data: unknown,
+  width = Number.MAX_SAFE_INTEGER,
+  style: (text: string, range: boolean) => string = (text) => text,
+): string {
   const details = object(data);
-  if (typeof details?.path === 'string' && typeof details.location === 'string' &&
-      /^\d+:\d+(?:–(?:\d+:)?\d+)?$/u.test(details.location)) {
-    const suffix = `:${details.location}`;
+  let location = typeof details?.location === 'string' ? details.location : '';
+  // Render attachments saved by the column-based version in the new format too.
+  const legacy = /^(\d+):\d+(?:–(?:(\d+):)?(\d+))?$/u.exec(location);
+  if (legacy) location = lineRange(Number(legacy[1]), legacy[2] ? Number(legacy[2]) - (legacy[3] === '1' ? 1 : 0) : undefined);
+  if (typeof details?.path === 'string' && /^\d+(?:-\d+)?$/u.test(location)) {
+    const suffix = `:${location}`;
     const path = escapeMarkerPath(details.path);
-    if (visibleWidth(path + suffix) <= width) return path + suffix;
+    if (visibleWidth(path + suffix) <= width) return style(path, false) + style(suffix, true);
     const shortPath = escapeMarkerPath(basename(details.path));
     const pathBudget = width - visibleWidth(suffix);
     if (pathBudget >= 2) {
       const shortened = shortPath === path ? path : `…/${shortPath}`;
-      return truncateToWidth(shortened, pathBudget, '…') + suffix;
+      return style(truncateToWidth(shortened, pathBudget, '…'), false) + style(suffix, true);
     }
-    return truncateToWidth(shortPath + suffix, width, '…');
+    return style(truncateToWidth(suffix, width, '…'), true);
   }
   const count = details?.tabs;
   const label = typeof count === 'number' && Number.isSafeInteger(count) && count > 0
     ? `${count} open tab${count === 1 ? '' : 's'}`
     : 'Context attached';
-  return truncateToWidth(label, width, '…');
+  return style(truncateToWidth(label, width, '…'), false);
 }
 
 function snapshotText(snapshot: Snapshot): string {
@@ -161,7 +172,9 @@ export default function ideContextExtension(pi: ExtensionAPI): void {
         const prefix = 'IDE · ';
         const budget = width - visibleWidth(prefix);
         if (budget <= 0) return [theme.fg('customMessageLabel', truncateToWidth('IDE', width, '…'))];
-        return [theme.fg('customMessageLabel', prefix) + theme.fg('customMessageText', attachmentLocation(message.details, budget))];
+        const location = attachmentLocation(message.details, budget,
+          (text, range) => theme.fg(range ? 'warning' : 'customMessageText', text));
+        return [theme.fg('customMessageLabel', prefix) + location];
       },
     });
     if (expanded && typeof message.content === 'string') {
