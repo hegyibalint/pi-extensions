@@ -81,6 +81,7 @@ test('attaches only to user prompts and preserves the existing /ide command', as
     registerEntryRenderer: (name, renderer) => entryRenderers.set(name, renderer),
     appendEntry: (type, data) => entries.push({ type, data }),
   });
+  assert.deepEqual([...commands.keys()], ['ide']);
   const run = hooks.get('before_agent_start');
   const ctx = { mode: 'tui', ui: { notify: (text) => notifications.push(text) } };
   delete process.env.PI_VSCODE_SOCKET;
@@ -103,6 +104,6 @@ test('attaches only to user prompts and preserves the existing /ide command', as
   assert.equal(await run({ messageType: 'user' }, ctx), undefined);
   assert.equal(requests.length, 2);
   assert.equal(entries.length, 1);
-  await commands.get('pi-ide').handler('', ctx);
+  await commands.get('ide').handler('', ctx);
   assert.match(notifications.at(-1), /auto-attachment off/);
 });

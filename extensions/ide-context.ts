@@ -123,29 +123,27 @@ export default function ideContextExtension(pi: ExtensionAPI): void {
     return new Text(expanded ? `${title}\n${message.content}` : title, outputPad, 0);
   });
 
-  for (const name of ['ide', 'pi-ide']) {
-    pi.registerCommand(name, {
-      description: 'Preview VS Code context or toggle auto-attachment with on|off',
-      handler: async (args, ctx) => {
-        const action = args.trim();
-        if (action === 'on' || action === 'off') {
-          enabled = action === 'on';
-          ctx.ui.notify(`VS Code context auto-attachment ${enabled ? 'enabled' : 'disabled'} for this session.`, 'info');
-        } else if (action) {
-          ctx.ui.notify(`Usage: /${name} [on|off]`, 'warning');
-        } else {
-          try {
-            const snapshot = await refresh();
-            ctx.ui.notify(`VS Code connected · auto-attachment ${enabled ? 'on' : 'off'}\n${snapshotText(snapshot)}`, 'info');
-          } catch (error) {
-            const code = object(error)?.code;
-            const reason = typeof code === 'string' ? `Could not reach VS Code (${code}). Open a new integrated terminal.` : String(error);
-            ctx.ui.notify(`VS Code context unavailable: ${reason}`, 'warning');
-          }
+  pi.registerCommand('ide', {
+    description: 'Preview VS Code context or toggle auto-attachment with on|off',
+    handler: async (args, ctx) => {
+      const action = args.trim();
+      if (action === 'on' || action === 'off') {
+        enabled = action === 'on';
+        ctx.ui.notify(`VS Code context auto-attachment ${enabled ? 'enabled' : 'disabled'} for this session.`, 'info');
+      } else if (action) {
+        ctx.ui.notify('Usage: /ide [on|off]', 'warning');
+      } else {
+        try {
+          const snapshot = await refresh();
+          ctx.ui.notify(`VS Code connected · auto-attachment ${enabled ? 'on' : 'off'}\n${snapshotText(snapshot)}`, 'info');
+        } catch (error) {
+          const code = object(error)?.code;
+          const reason = typeof code === 'string' ? `Could not reach VS Code (${code}). Open a new integrated terminal.` : String(error);
+          ctx.ui.notify(`VS Code context unavailable: ${reason}`, 'warning');
         }
-      },
-    });
-  }
+      }
+    },
+  });
 
   pi.on('before_agent_start', async (event, ctx) => {
     if (!enabled || !process.env[SOCKET_ENV] || event.messageType !== 'user') return;

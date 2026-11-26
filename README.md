@@ -23,7 +23,7 @@ If you already have loose copies of these extensions in `~/.pi/agent/extensions/
 
 | Extension | What it does |
 | --- | --- |
-| `ide-context` | Pulls the active file, cursor, selection coordinates, and open tabs from the VS Code window where Pi was started. `/ide` (also `/pi-ide`) previews the context. No Codex required. |
+| `ide-context` | Pulls the active file, cursor, selection coordinates, and open tabs from the VS Code window where Pi was started. `/ide` previews the context. No Codex required. |
 | `notification` | `/notification on` enables macOS desktop notifications for completed turns; `/notification off` disables them. Off by default. |
 | `statusbar` | Shows context usage, token counts, cost, Git branch, and provider quota when available. Toggle with `/statusbar`. |
 | `web-search` | Adds `web_search` and `codex_standalone_web` using Pi’s existing OpenAI credentials and an available OpenAI model with web search support. |
