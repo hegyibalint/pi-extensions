@@ -34,7 +34,7 @@ Installing does not require provider credentials. For features that use OpenAI o
 
 The Pi client is already included in the install above. To enable the editor side, download the [Pi IDE Context VSIX](https://github.com/hegyibalint/pi-ide-context/releases/latest) and install it in VS Code via **Extensions: Install from VSIX…**. Open a new integrated terminal, start Pi, and run `/ide`. Existing shells need to be reopened; external terminals work as usual.
 
-Selected text is off by default. Context attached to a prompt is saved in the Pi session and can be sent to the model provider. Use `/ide off` to pause automatic attachment for the session. If you installed the old standalone Pi companion, remove it to avoid duplicate context: `pi remove git:github.com/hegyibalint/pi-ide-context@v0.1.0` (use the source shown by `pi list` if it differs).
+Selected text is off by default. Context attached to a prompt is saved in the Pi session and can be sent to the model provider. Pi shows `↳ IDE context attached` above the prompt in the terminal UI. Run `/ide` to preview the current snapshot or `/ide off` to pause automatic attachment for the session. If you installed the old standalone Pi companion, remove it to avoid duplicate context: `pi remove git:github.com/hegyibalint/pi-ide-context@v0.1.0` (use the source shown by `pi list` if it differs).
 
 ## Development
 

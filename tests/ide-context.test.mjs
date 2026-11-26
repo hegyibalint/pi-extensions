@@ -72,24 +72,37 @@ test('attaches only to user prompts and preserves the existing /ide command', as
   const commands = new Map();
   const hooks = new Map();
   const notifications = [];
+  const entries = [];
+  const entryRenderers = new Map();
   extension({
     on: (name, handler) => hooks.set(name, handler),
     registerCommand: (name, command) => commands.set(name, command),
     registerMessageRenderer: () => {},
+    registerEntryRenderer: (name, renderer) => entryRenderers.set(name, renderer),
+    appendEntry: (type, data) => entries.push({ type, data }),
   });
   const run = hooks.get('before_agent_start');
-  const ctx = { ui: { notify: (text) => notifications.push(text) } };
+  const ctx = { mode: 'tui', ui: { notify: (text) => notifications.push(text) } };
   delete process.env.PI_VSCODE_SOCKET;
-  assert.equal(await run({ messageType: 'user' }), undefined);
+  assert.equal(await run({ messageType: 'user' }, ctx), undefined);
   process.env.PI_VSCODE_SOCKET = path;
-  assert.equal(await run({ messageType: 'custom' }), undefined);
+  assert.equal(await run({ messageType: 'custom' }, ctx), undefined);
   assert.equal(requests.length, 0);
-  const attachment = await run({ messageType: 'user' });
-  assert.equal(attachment.message.display, true);
+  assert.deepEqual(entries, []);
+
+  const attachment = await run({ messageType: 'user' }, ctx);
+  assert.equal(attachment.message.display, false);
   assert.match(attachment.message.content, /\/repo\/main\.ts/);
+  assert.deepEqual(entries, [{ type: 'pi-ide-context-attached', data: {} }]);
+  const render = entryRenderers.get(entries[0].type);
+  const marker = render(entries[0], { outputPad: 0 }, { fg: (_color, text) => text });
+  assert.deepEqual(marker.render(80).map((line) => line.trimEnd()), ['↳ IDE context attached']);
+
+  assert.equal((await run({ messageType: 'user' }, { mode: 'rpc' })).message.display, false);
   await commands.get('ide').handler('off', ctx);
-  assert.equal(await run({ messageType: 'user' }), undefined);
-  assert.equal(requests.length, 1);
+  assert.equal(await run({ messageType: 'user' }, ctx), undefined);
+  assert.equal(requests.length, 2);
+  assert.equal(entries.length, 1);
   await commands.get('pi-ide').handler('', ctx);
   assert.match(notifications.at(-1), /auto-attachment off/);
 });
