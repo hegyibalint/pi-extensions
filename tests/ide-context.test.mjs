@@ -83,14 +83,12 @@ test('attaches only to user prompts and preserves the existing /ide command', as
   const commands = new Map();
   const hooks = new Map();
   const notifications = [];
-  const entries = [];
-  const entryRenderers = new Map();
+  const renderers = new Map();
   extension({
     on: (name, handler) => hooks.set(name, handler),
     registerCommand: (name, command) => commands.set(name, command),
-    registerMessageRenderer: () => {},
-    registerEntryRenderer: (name, renderer) => entryRenderers.set(name, renderer),
-    appendEntry: (type, data) => entries.push({ type, data }),
+    registerMessageRenderer: (name, renderer) => renderers.set(name, renderer),
+    appendEntry: () => assert.fail('the context message must not create a separate tree entry'),
   });
   assert.deepEqual([...commands.keys()], ['ide']);
   const run = hooks.get('before_agent_start');
@@ -100,25 +98,32 @@ test('attaches only to user prompts and preserves the existing /ide command', as
   process.env.PI_VSCODE_SOCKET = path;
   assert.equal(await run({ messageType: 'custom' }, ctx), undefined);
   assert.equal(requests.length, 0);
-  assert.deepEqual(entries, []);
 
-  const attachment = await run({ messageType: 'user' }, ctx);
-  assert.equal(attachment.message.display, false);
-  assert.match(attachment.message.content, /\/repo\/main\.ts/);
-  assert.deepEqual(entries, [{ type: 'pi-ide-context-attached', data: { path: 'main.ts', location: '2:3' } }]);
-  const render = entryRenderers.get(entries[0].type);
-  const marker = (data, width = 80) => render({ data }, { outputPad: 0 }, { fg: (_color, text) => text }).render(width);
-  assert.deepEqual(marker(entries[0].data), ['↳ main.ts:2:3']);
-  assert.deepEqual(marker({ path: 'some/very/long/folder/main.ts', location: '2:3–12:5' }, 22), ['↳ …/main.ts:2:3–12:5']);
-  assert.deepEqual(marker({ path: 'a\n\x1b.ts', location: '2:3' }), ['↳ a\\u000a\\u001b.ts:2:3']);
-  assert.deepEqual(marker({ tabs: 3 }), ['↳ 3 IDE tabs']);
-  assert.deepEqual(marker({}), ['↳ IDE context attached']);
+  const { message } = await run({ messageType: 'user' }, ctx);
+  assert.equal(message.customType, 'IDE');
+  assert.equal(message.display, true);
+  assert.equal(message.content.split('\n')[0], 'main.ts:2:3');
+  assert.match(message.content, /\/repo\/main\.ts/);
+  assert.deepEqual(message.details, { path: 'main.ts', location: '2:3' });
+  const colors = [];
+  const theme = {
+    fg: (color, text) => { colors.push(color); return text; },
+    bg: (color, text) => { colors.push(color); return text; },
+  };
+  const render = renderers.get(message.customType);
+  const card = (details, width = 80, expanded = false) =>
+    render({ ...message, details }, { outputPad: 0, expanded }, theme).render(width).map((line) => line.trimEnd());
+  assert.deepEqual(card(message.details), ['IDE · main.ts:2:3']);
+  assert.deepEqual(new Set(colors), new Set(['customMessageLabel', 'customMessageText', 'customMessageBg']));
+  assert.deepEqual(card({ path: 'some/very/long/folder/main.ts', location: '2:3–12:5' }, 24), ['IDE · …/main.ts:2:3–12:5']);
+  assert.deepEqual(card({ path: 'a\n\x1b.ts', location: '2:3' }), ['IDE · a\\u000a\\u001b.ts:2:3']);
+  assert.deepEqual(card({ tabs: 3 }), ['IDE · 3 open tabs']);
+  assert.match(card(message.details, 80, true).join('\n'), /\/repo\/main\.ts/);
 
-  assert.equal((await run({ messageType: 'user' }, { mode: 'rpc' })).message.display, false);
+  assert.equal((await run({ messageType: 'user' }, { mode: 'rpc', cwd: '/repo' })).message.display, true);
   await commands.get('ide').handler('off', ctx);
   assert.equal(await run({ messageType: 'user' }, ctx), undefined);
   assert.equal(requests.length, 2);
-  assert.equal(entries.length, 1);
   await commands.get('ide').handler('', ctx);
   assert.match(notifications.at(-1), /auto-attachment off/);
 });
