@@ -113,11 +113,12 @@ test('attaches only to user prompts and preserves the existing /ide command', as
   const render = renderers.get(message.customType);
   const card = (details, width = 80, expanded = false) =>
     render({ ...message, details }, { outputPad: 0, expanded }, theme).render(width).map((line) => line.trimEnd());
-  assert.deepEqual(card(message.details), ['IDE · main.ts:2:3']);
+  const padded = (text) => ['', text, ''];
+  assert.deepEqual(card(message.details), padded('IDE · main.ts:2:3'));
   assert.deepEqual(new Set(colors), new Set(['customMessageLabel', 'customMessageText', 'customMessageBg']));
-  assert.deepEqual(card({ path: 'some/very/long/folder/main.ts', location: '2:3–12:5' }, 24), ['IDE · …/main.ts:2:3–12:5']);
-  assert.deepEqual(card({ path: 'a\n\x1b.ts', location: '2:3' }), ['IDE · a\\u000a\\u001b.ts:2:3']);
-  assert.deepEqual(card({ tabs: 3 }), ['IDE · 3 open tabs']);
+  assert.deepEqual(card({ path: 'some/very/long/folder/main.ts', location: '2:3–12:5' }, 24), padded('IDE · …/main.ts:2:3–12:5'));
+  assert.deepEqual(card({ path: 'a\n\x1b.ts', location: '2:3' }), padded('IDE · a\\u000a\\u001b.ts:2:3'));
+  assert.deepEqual(card({ tabs: 3 }), padded('IDE · 3 open tabs'));
   assert.match(card(message.details, 80, true).join('\n'), /\/repo\/main\.ts/);
 
   assert.equal((await run({ messageType: 'user' }, { mode: 'rpc', cwd: '/repo' })).message.display, true);

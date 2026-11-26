@@ -154,7 +154,7 @@ export default function ideContextExtension(pi: ExtensionAPI): void {
   const refresh = () => fetchSnapshot(process.env[SOCKET_ENV]);
 
   const renderAttachment: Parameters<ExtensionAPI['registerMessageRenderer']>[1] = (message, { expanded, outputPad }, theme) => {
-    const box = new Box(outputPad, 0, (line) => theme.bg('customMessageBg', line));
+    const box = new Box(outputPad, 1, (line) => theme.bg('customMessageBg', line));
     box.addChild({
       invalidate() {},
       render(width) {
